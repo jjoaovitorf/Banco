@@ -24,6 +24,13 @@ int bancoAberto = 0;
 int ganhador = -1;
 double premio = 0;
 
+int fibonacci(int num) {
+    if (num == 0)
+        return 0;
+    if (num == 1)
+        return 1;
+    return fibonacci(num - 1) + fibonacci(num - 2);
+}
 
 int abrirConta(int c, int tipo) {
     for (int i = 0; i < clientes[c].qtdContas; i++) {
@@ -42,7 +49,6 @@ int abrirConta(int c, int tipo) {
     return 1;
 }
 
-
 void abrirBanco() {
     if (bancoAberto == 1) {
         printf("O banco ja esta aberto.\n");
@@ -51,7 +57,6 @@ void abrirBanco() {
 
     printf("Quantos clientes? ");
     scanf("%d", &qtdClientes);
-    if (qtdClientes > 100) qtdClientes = 100;
 
     for (int i = 0; i < qtdClientes; i++) {
         printf("\nNome do cliente %d: ", i + 1);
@@ -60,7 +65,6 @@ void abrirBanco() {
         int quantas;
         printf("Quantas contas? ");
         scanf("%d", &quantas);
-        if (quantas > 10) quantas = 10;
 
         int abertas = 0;
         while (abertas < quantas) {
@@ -79,8 +83,6 @@ void abrirBanco() {
     printf("\nBanco aberto!\n");
 }
 
-
-// devolve a posicao da conta do tipo pedido (ou -1 se nao tiver)
 int buscar(int c, int tipo) {
     for (int i = 0; i < clientes[c].qtdContas; i++) {
         if (clientes[c].contas[i].tipo == tipo)
@@ -89,7 +91,6 @@ int buscar(int c, int tipo) {
     return -1;
 }
 
-// soma o saldo de todas as contas do cliente
 double total(int c) {
     double soma = 0;
     for (int i = 0; i < clientes[c].qtdContas; i++) {
@@ -98,7 +99,22 @@ double total(int c) {
     return soma;
 }
 
-// 1 = pode pegar emprestimo, 0 = nao pode
+void guardar(int c, int k, double valor) {
+    clientes[c].contas[k].saldo += valor;
+    clientes[c].contas[k].historico[clientes[c].contas[k].qtdHistorico] = valor;
+    clientes[c].contas[k].qtdHistorico++;
+}
+
+int escolherCliente() {
+    int c;
+    for (int i = 0; i < qtdClientes; i++) {
+        printf("%d - %s\n", i + 1, clientes[i].nome);
+    }
+    printf("Qual cliente? ");
+    scanf("%d", &c);
+    return c - 1;
+}
+
 int podeEmprestimo(int c) {
     if (clientes[c].emprestimo == 1)
         return 0;
@@ -111,7 +127,6 @@ int podeEmprestimo(int c) {
     return 1;
 }
 
-// 1 = pode comprar titulo (salario entre 1000 e 1500)
 int podeTitulo(int c) {
     int salario = buscar(c, 2);
     if (salario == -1)
@@ -121,6 +136,14 @@ int podeTitulo(int c) {
     return 0;
 }
 
+int posicao(int c) {
+    int qtd = 0;
+    for (int i = 0; i < qtdClientes; i++) {
+        if (total(i) > total(c))
+            qtd++;
+    }
+    return qtd;
+}
 
 void alerta() {
     for (int i = 0; i < qtdClientes; i++) {
@@ -129,7 +152,6 @@ void alerta() {
             printf("ALERTA: %s esta com saldo negativo na conta corrente!\n", clientes[i].nome);
     }
 }
-
 
 void historico() {
     double soma = 0;
@@ -143,7 +165,7 @@ void historico() {
     for (int i = 0; i < qtdClientes; i++) {
         if (podeEmprestimo(i) == 1) {
             int poupanca = buscar(i, 3);
-            printf("%s|%d-%02d|%.2f\n", clientes[i].nome, clientes[i].contas[poupanca].numero, 3, 0.25 * 10 * total(i));
+            printf("%s|%d-03|%.2f\n", clientes[i].nome, clientes[i].contas[poupanca].numero, 0.25 * 10 * total(i));
         }
     }
 
@@ -151,24 +173,23 @@ void historico() {
     for (int i = 0; i < qtdClientes; i++) {
         int salario = buscar(i, 2);
         if (salario != -1 && clientes[i].contas[salario].saldo < 0)
-            printf("%s|%d-%02d|%.2f\n", clientes[i].nome, clientes[i].contas[salario].numero, 2, clientes[i].contas[salario].saldo);
+            printf("%s|%d-02|%.2f\n", clientes[i].nome, clientes[i].contas[salario].numero, clientes[i].contas[salario].saldo);
     }
 
     printf("\n== Clientes Aptos a Compra de Titulos ==\n");
     for (int i = 0; i < qtdClientes; i++) {
         if (podeTitulo(i) == 1) {
             int salario = buscar(i, 2);
-            printf("%s|%d-%02d|%.2f\n", clientes[i].nome, clientes[i].contas[salario].numero, 2, clientes[i].contas[salario].saldo);
+            printf("%s|%d-02|%.2f\n", clientes[i].nome, clientes[i].contas[salario].numero, clientes[i].contas[salario].saldo);
         }
     }
 
     printf("\n== Clientes Contemplado no Sorteio ==\n");
     if (ganhador != -1) {
         int salario = buscar(ganhador, 2);
-        printf("%s|%d-%02d|%.2f\n", clientes[ganhador].nome, clientes[ganhador].contas[salario].numero, 2, premio);
+        printf("%s|%d-02|%.2f\n", clientes[ganhador].nome, clientes[ganhador].contas[salario].numero, premio);
     }
 }
-
 
 void sorteio() {
     if (qtdClientes < 5) {
@@ -176,37 +197,22 @@ void sorteio() {
         return;
     }
 
-    int fib[5] = {5, 3, 2, 1, 1};
     int pesoTotal = 0;
-
-    // posicao = quantos clientes tem saldo maior que o cliente i
-    // se posicao < 5, o cliente esta entre os 5 maiores saldos
     for (int i = 0; i < qtdClientes; i++) {
-        int posicao = 0;
-        for (int j = 0; j < qtdClientes; j++) {
-            if (total(j) > total(i))
-                posicao++;
-        }
-        if (posicao < 5) {
+        if (posicao(i) < 5) {
             if (podeTitulo(i) == 0) {
                 printf("%s nao tem titulo. Sorteio cancelado.\n", clientes[i].nome);
                 return;
             }
-            pesoTotal = pesoTotal + fib[posicao];
+            pesoTotal = pesoTotal + fibonacci(5 - posicao(i));
         }
     }
 
-    // sorteia um numero e ve de quem ele e
     int numero = rand() % pesoTotal;
     int soma = 0;
     for (int i = 0; i < qtdClientes; i++) {
-        int posicao = 0;
-        for (int j = 0; j < qtdClientes; j++) {
-            if (total(j) > total(i))
-                posicao++;
-        }
-        if (posicao < 5) {
-            soma = soma + fib[posicao];
+        if (posicao(i) < 5) {
+            soma = soma + fibonacci(5 - posicao(i));
             if (numero < soma) {
                 ganhador = i;
                 break;
@@ -214,26 +220,16 @@ void sorteio() {
         }
     }
 
-    // premio = 10 vezes o saldo da conta salario
     int salario = buscar(ganhador, 2);
     premio = 10 * clientes[ganhador].contas[salario].saldo;
-    clientes[ganhador].contas[salario].saldo += premio;
-    clientes[ganhador].contas[salario].historico[clientes[ganhador].contas[salario].qtdHistorico] = premio;
-    clientes[ganhador].contas[salario].qtdHistorico++;
+    guardar(ganhador, salario, premio);
     printf("Vencedor: %s | Premio: R$ %.2f\n", clientes[ganhador].nome, premio);
 }
 
-
 void adicionarSaldo() {
-    int c, k;
+    int c = escolherCliente();
+    int k;
     double valor;
-
-    for (int i = 0; i < qtdClientes; i++) {
-        printf("%d - %s\n", i + 1, clientes[i].nome);
-    }
-    printf("Qual cliente? ");
-    scanf("%d", &c);
-    c--;
 
     for (int i = 0; i < clientes[c].qtdContas; i++) {
         printf("%d - %d-%02d\n", i + 1, clientes[c].contas[i].numero, clientes[c].contas[i].tipo);
@@ -244,23 +240,12 @@ void adicionarSaldo() {
 
     printf("Valor: ");
     scanf("%lf", &valor);
-
-    clientes[c].contas[k].saldo += valor;
-    clientes[c].contas[k].historico[clientes[c].contas[k].qtdHistorico] = valor;
-    clientes[c].contas[k].qtdHistorico++;
+    guardar(c, k, valor);
 }
 
-
 void pedirEmprestimo() {
-    int c;
+    int c = escolherCliente();
     double valor;
-
-    for (int i = 0; i < qtdClientes; i++) {
-        printf("%d - %s\n", i + 1, clientes[i].nome);
-    }
-    printf("Qual cliente? ");
-    scanf("%d", &c);
-    c--;
 
     if (podeEmprestimo(c) == 0) {
         printf("Cliente nao esta apto a emprestimo.\n");
@@ -277,14 +262,10 @@ void pedirEmprestimo() {
         return;
     }
 
-    int corrente = buscar(c, 1);
-    clientes[c].contas[corrente].saldo += valor;
-    clientes[c].contas[corrente].historico[clientes[c].contas[corrente].qtdHistorico] = valor;
-    clientes[c].contas[corrente].qtdHistorico++;
+    guardar(c, buscar(c, 1), valor);
     clientes[c].emprestimo = 1;
     printf("Emprestimo concedido!\n");
 }
-
 
 int main() {
     srand(time(NULL));
@@ -313,8 +294,6 @@ int main() {
             adicionarSaldo();
         else if (opcao == 5)
             pedirEmprestimo();
-        else if (opcao != 6)
-            printf("Opcao invalida.\n");
     } while (opcao != 6);
 
     return 0;
